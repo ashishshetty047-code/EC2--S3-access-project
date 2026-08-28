@@ -1,0 +1,209 @@
+🔐 AWS IAM Hands-On Project: EC2 → IAM Role → S3
+
+I recently completed a small AWS IAM hands-on project to understand how **IAM Roles, Trust Policies, Permission Policies, and Least Privilege** work together in a real AWS environment.
+
+🎯 **Project Objective**
+
+Allow an EC2 instance to securely read a file from a private S3 bucket using an **IAM Role**, without storing AWS access keys on the EC2 instance.
+
+### 1️⃣ Create a Private S3 Bucket
+
+Created a private S3 bucket with a unique name:
+
+`ashishh-ec2-iam-lab-2026`
+
+Created a test file:
+
+`iam-test.txt`
+
+File content:
+
+`This file is being accessed by EC2 through an IAM Role.`
+
+Uploaded the file to the S3 bucket.
+
+🔒 **Security:** S3 Block Public Access was kept enabled.
+
+### 2️⃣ Create the IAM Permission Policy
+
+Created the policy:
+
+`EC2-S3-Read-Lab-Policy`
+
+**Purpose:** Allow EC2 to list the bucket and read/download objects from it.
+
+JSON policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::ashishh-ec2-iam-lab-2026"
+    },
+    {
+      "Sid": "ReadObjects",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::ashishh-ec2-iam-lab-2026/*"
+    }
+  ]
+}
+```
+
+This follows the **Principle of Least Privilege** because the role receives only the S3 permissions required for this task.
+
+### 3️⃣ Create the IAM Role
+
+Created:
+
+`EC2-S3-Access-Role`
+
+Path:
+
+**IAM → Roles → Create Role → AWS Service → EC2**
+
+Attached:
+
+`EC2-S3-Read-Lab-Policy`
+
+The role also contains a **Trust Policy** that allows the EC2 service to assume the role.
+
+Conceptually:
+
+`EC2 → AssumeRole → EC2-S3-Access-Role`
+
+This helped me understand the difference between:
+
+🔹 **Trust Policy:** Who can assume the role?
+
+🔹 **Permission Policy:** What can the role do?
+
+### 4️⃣ Create an EC2 Instance
+
+Launched an EC2 instance to test the IAM Role and S3 access.
+
+### 5️⃣ Attach the IAM Role to EC2
+
+Attached:
+
+`EC2-S3-Access-Role`
+
+to the EC2 instance.
+
+This allows EC2 to obtain temporary credentials through the IAM Role instead of using long-term AWS access keys.
+
+### 6️⃣ Test EC2 → S3 Access
+
+First verified the AWS identity:
+
+```bash
+aws sts get-caller-identity
+```
+
+Result showed the assumed role:
+
+`EC2-S3-Access-Role`
+
+Then tested access to the S3 bucket:
+
+```bash
+aws s3 ls s3://ashishh-ec2-iam-lab-2026
+```
+
+Result:
+
+`iam-test.txt`
+
+Downloaded the object:
+
+```bash
+aws s3 cp s3://ashishh-ec2-iam-lab-2026/iam-test.txt .
+```
+
+Read the downloaded file:
+
+```bash
+cat iam-test.txt
+```
+
+Output:
+
+`This file is being accessed by EC2 through an IAM Role.`
+
+✅ EC2 successfully accessed the private S3 bucket using the IAM Role.
+
+### 7️⃣ Test Least Privilege
+
+The role has only:
+
+```text
+s3:ListBucket
+s3:GetObject
+```
+
+I then tested an operation that was **not** permitted:
+
+```bash
+aws s3 rm s3://ashishh-ec2-iam-lab-2026/iam-test.txt
+```
+
+Result:
+
+`AccessDenied`
+
+The reason is that the role does not have:
+
+```text
+s3:DeleteObject
+```
+
+This demonstrated **Least Privilege in action**.
+
+### 🔎 Key IAM Concepts Learned
+
+✅ IAM Roles
+✅ Trust Policies
+✅ Permission Policies
+✅ EC2 Instance Roles
+✅ Temporary AWS credentials
+✅ S3 permissions
+✅ `iam:PassRole` concept
+✅ Principle of Least Privilege
+✅ AccessDenied troubleshooting
+✅ EC2 → IAM Role → S3 access flow
+
+### 🏗️ Architecture
+
+```text
+                 IAM Role
+            EC2-S3-Access-Role
+                     │
+             ┌───────┴────────┐
+             │                │
+       Trust Policy     Permission Policy
+             │                │
+        EC2 trusted      S3 List/Get
+             │                │
+             └───────┬────────┘
+                     ↓
+                    EC2
+                     │
+                     │ IAM Role
+                     ↓
+               Private S3 Bucket
+                     │
+                     ↓
+                iam-test.txt
+```
+
+### 💡 Key Takeaway
+
+Instead of embedding AWS access keys inside an EC2 instance, **IAM Roles provide a more secure way for AWS services to obtain temporary credentials and access only the resources they need.**
+
+This hands-on project helped me better understand how **IAM Roles + Trust Policies + Permission Policies + Least Privilege** work together in AWS Cloud Security.
+
+#AWS #AWSCloud #CloudSecurity #IAM #AWSIAM #CloudSecurityEngineer #CyberSecurity #EC2 #S3 #LeastPrivilege #CloudComputing #AWSHandsOn #LearningInPublic
